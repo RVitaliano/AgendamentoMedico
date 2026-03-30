@@ -19,29 +19,47 @@ public class AgendamentosController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var agendamentos = await _context.Agendamentos
-            .Include(a => a.Paciente)
-            .Include(a => a.Medico)
-            .ToListAsync();
+        var agendamentos = await _context.Agendamentos.ToListAsync();
+
+        foreach (var a in agendamentos)
+        {
+            a.Paciente = await _context.Pacientes.FindAsync(a.PacienteId);
+            a.Medico = await _context.Medicos.FindAsync(a.MedicoId);
+        }
+
         return Ok(agendamentos);
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var agendamento = await _context.Agendamentos
-            .Include(a => a.Paciente)
-            .Include(a => a.Medico)
-            .FirstOrDefaultAsync(a => a.Id == id);
+        var idStr = id.ToString().ToLower();
+
+        var agendamentos = await _context.Agendamentos
+            .FromSqlRaw($"SELECT * FROM Agendamentos WHERE LOWER(Id) = '{idStr}'")
+            .ToListAsync();
+
+        var agendamento = agendamentos.FirstOrDefault();
 
         if (agendamento is null)
             return NotFound();
+
+        var pacientes = await _context.Pacientes
+            .FromSqlRaw($"SELECT * FROM Pacientes WHERE LOWER(Id) = '{agendamento.PacienteId.ToString().ToLower()}'")
+            .ToListAsync();
+
+        var medicos = await _context.Medicos
+            .FromSqlRaw($"SELECT * FROM Medicos WHERE LOWER(Id) = '{agendamento.MedicoId.ToString().ToLower()}'")
+            .ToListAsync();
+
+        agendamento.Paciente = pacientes.FirstOrDefault();
+        agendamento.Medico = medicos.FirstOrDefault();
 
         return Ok(agendamento);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(Agendamento agendamento)
+    public async Task<IActionResult> Create([FromBody] Agendamento agendamento)
     {
         _context.Agendamentos.Add(agendamento);
         await _context.SaveChangesAsync();

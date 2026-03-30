@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore.Migrations;
 using AgendamentoMedico.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +7,13 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySQL(connectionString));
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler =
+            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
+
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
